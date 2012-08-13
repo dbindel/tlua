@@ -1,7 +1,8 @@
---[[
-## Test task parsing
---]]
 require 'tlua'
+
+--[[
+# Test task parsing
+--]]
 
 function compare_task(t1, t2)
    assert(t1.done == t2.done)
@@ -40,3 +41,41 @@ t2ref = {
   projects = {"baking"}
 }
 compare_task(t2, t2ref)
+
+--[[
+# Test task ordering
+--]]
+
+task_string_list = {
+   "x 2012-08-01 done 1",
+   "x 2012-07-01 done 3",
+   "x 2012-08-01 done 2",
+   "(A) First task",
+   "(A) Second task",
+   "(B) Fifth task",
+   "(B) 2012-08-01 Third task",
+   "(B) 2012-08-02 Fourth task"
+}
+
+ordered_task_string_list = {
+   "(A) First task",
+   "(A) Second task",
+   "(B) 2012-08-01 Third task",
+   "(B) 2012-08-02 Fourth task",
+   "(B) Fifth task",
+   "x 2012-08-01 done 1",
+   "x 2012-08-01 done 2",
+   "x 2012-07-01 done 3"
+}
+
+
+task_list = {}
+for i,tasks in ipairs(task_string_list) do
+   task_list[i] = parse_task(tasks)
+end
+
+sort_tasks(task_list)
+for i,task in ipairs(task_list) do
+   assert(task_string(task) == ordered_task_string_list[i])
+end
+

@@ -94,3 +94,45 @@ Eventually:
 
 -- print("Today is:", os.date("%F", os.time()))
 
+-- Return true if first item should be first in the list
+
+--[[
+# Task ordering
+
+We define the following order on tasks:
+
+1.  Unfinished comes before completed.
+2.  Sort completed tasks by completion date (most recent first)
+3.  Sort unfinished tasks by priority (unprioritized last)
+4.  Sort within priority by date added (oldest first)
+5.  Then sort according to original ordering (task.number)
+--]]
+
+function task_compare(t1,t2)
+   if t1.done ~= t2.done then
+      if t1.done and t2.done then 
+         return (t1.done > t2.done)
+      else
+         return t2.done
+      end
+   elseif t1.priority ~= t2.priority then
+      if t1.priority and t2.priority then
+         return (t1.priority < t2.priority)
+      else
+         return t1.priority
+      end
+   elseif t1.added ~= t2.added then
+      if t1.added and t2.added then
+         return (t1.added < t2.added)
+      else
+         return t1.added
+      end
+   else
+      return t1.number < t2.number
+   end
+end
+
+function sort_tasks(tasks)
+   for i = 1,#tasks do tasks[i].number = i end
+   return table.sort(tasks, task_compare)
+end
