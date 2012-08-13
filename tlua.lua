@@ -19,6 +19,12 @@ A finished task line has the form
 That is, the line starts with `x` and the completion date, and
 otherwise looks pretty much the same as an active task line.
 
+Code for storing and processing tasks belongs to the `Task` namespace.
+--]]
+
+Task = {}
+
+--[[
 ## Parsing task lines
 
 The `parse_task` function converts a task line, either finished or
@@ -26,7 +32,7 @@ unfinished, into a Lua table.  The fields are `done`, `priority`,
 `date`, `project`, and `context`.
 --]]
 
-function parse_task(line)
+function Task.parse(line)
    local result = { projects = {}, contexts = {} }
    
    local function lget(pattern, handler)
@@ -56,11 +62,11 @@ end
 --[[
 ## Generating task lines
 
-The `task_string` function takes a task record and generates a
-corresponding string that can be parsed by `parse_task`.
+The `Task.string` function takes a task record and generates a
+corresponding string that can be parsed by `Task.parse`.
 --]]
 
-function task_string(task)
+function Task.string(task)
    local result
    if task.done then
       result = "x " .. task.done .. " "
@@ -81,22 +87,6 @@ function task_string(task)
 end
 
 --[[
-Want to:
-   - Parse (both todo and done)
-   - Execute user update actions (add, complete, prioritize)
-   - Add repeating tasks
-   - Sort
-   - Execute list actions
-
-Eventually:
-   - Start/stop clock on task
---]]
-
--- print("Today is:", os.date("%F", os.time()))
-
--- Return true if first item should be first in the list
-
---[[
 # Task ordering
 
 We define the following order on tasks:
@@ -108,7 +98,7 @@ We define the following order on tasks:
 5.  Then sort according to original ordering (task.number)
 --]]
 
-function task_compare(t1,t2)
+function Task.compare(t1,t2)
    if t1.done ~= t2.done then
       if t1.done and t2.done then 
          return (t1.done > t2.done)
@@ -132,7 +122,24 @@ function task_compare(t1,t2)
    end
 end
 
-function sort_tasks(tasks)
+function Task.sort(tasks)
    for i = 1,#tasks do tasks[i].number = i end
-   return table.sort(tasks, task_compare)
+   return table.sort(tasks, Task.compare)
 end
+
+--[[
+Want to:
+   - Parse (both todo and done)
+   - Execute user update actions (add, complete, prioritize)
+   - Add repeating tasks
+   - Sort
+   - Execute list actions
+
+Eventually:
+   - Start/stop clock on task
+--]]
+
+-- print("Today is:", os.date("%F", os.time()))
+
+-- Return true if first item should be first in the list
+

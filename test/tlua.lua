@@ -19,8 +19,8 @@ function compare_task(t1, t2)
    end
 end
 
-t1 = parse_task("x 2012-08-02 2012-08-01 Bake cookies @home +baking")
-assert(task_string(t1) == 
+t1 = Task.parse("x 2012-08-02 2012-08-01 Bake cookies @home +baking")
+assert(Task.string(t1) == 
        "x 2012-08-02 2012-08-01 Bake cookies +baking @home")
 t1ref = {
   done = "2012-08-02",
@@ -31,8 +31,8 @@ t1ref = {
 }
 compare_task(t1, t1ref)
 
-t2 = parse_task("(A) 2012-08-03 Eat cookies @home +baking")
-assert(task_string(t2) == "(A) 2012-08-03 Eat cookies +baking @home")
+t2 = Task.parse("(A) 2012-08-03 Eat cookies @home +baking")
+assert(Task.string(t2) == "(A) 2012-08-03 Eat cookies +baking @home")
 t2ref = {
   priority = "A",
   added = "2012-08-03",
@@ -71,11 +71,11 @@ ordered_task_string_list = {
 
 task_list = {}
 for i,tasks in ipairs(task_string_list) do
-   task_list[i] = parse_task(tasks)
+   task_list[i] = Task.parse(tasks)
 end
 
-sort_tasks(task_list)
+Task.sort(task_list)
 for i,task in ipairs(task_list) do
-   assert(task_string(task) == ordered_task_string_list[i])
+   assert(Task.string(task) == ordered_task_string_list[i])
 end
 
