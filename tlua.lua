@@ -201,13 +201,14 @@ end
 
 
 --[[
-# Todo main class
+# Todo main routines
 
-The `Task` class has the methods for reading, writing, and manipulating
-tasks and task files.  The main class is where we actually have the logic
-of how we want to move things around according to user commands.  We
-use `new` to generate an object for testing; otherwise, we `load`
-the files at the beginning and `save` them at the end.
+The `Task` namespace has the methods for reading, writing, and
+manipulating tasks and task files.  The main `Todo` class is where we
+actually have the logic of how we want to move things around according
+to user commands.  We use `new` to generate an object for testing;
+otherwise, we `load` the files at the beginning and `save` them at the
+end.
 --]]
 
 Todo = {}
@@ -309,7 +310,7 @@ function Todo:run(id, ...)
    Task.sort(self.todo_tasks)
 end
 
-TODO_PATH = TODO_PATH or ""
+TODO_PATH = os.getenv("TODO_PATH") or ""
 local function main(...)
    local todo = Todo:load(TODO_PATH .. "todo.txt", 
                           TODO_PATH .. "done.txt")

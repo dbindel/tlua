@@ -1,0 +1,5 @@
+Still to do:
+ - Quiet key:value tags on tasks
+ - Repeating tasks
+ - Filtering
+ - Start/stop clock on task
