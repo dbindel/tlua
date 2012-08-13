@@ -1,3 +1,4 @@
+test_mode = true
 require 'tlua'
 
 --[[
@@ -80,10 +81,74 @@ for i,task in ipairs(task_list) do
 end
 
 --[[
-# Task I/O tests
+# Test I/O
 --]]
 
 tasks = Task.read_tasks("test/task_in.txt")
 Task.write_tasks("test/task_out.txt", tasks)
 Task.sort(tasks)
-Task.print_tasks(tasks)
+
+--[[
+# Test some basic operations
+--]]
+
+function check(todo, ts, ds)
+   assert(#todo.todo_tasks == #ts)
+   assert(#todo.done_tasks == #ds)
+   for i,task in ipairs(todo.todo_tasks) do
+      assert(Task.string(task) == ts[i])
+   end
+   for i,task in ipairs(todo.done_tasks) do
+      assert(Task.string(task) == ds[i])
+   end
+end
+
+local today = os.date("%F", os.time())
+local todo = Todo:new()
+
+todo:run("add", "(A) Bake cookies +baking @home")
+check(todo, 
+      {"(A) " .. today .. " Bake cookies +baking @home"},
+      {})
+
+todo:run("add", "Atomic wedgie")
+check(todo, 
+      {"(A) " .. today .. " Bake cookies +baking @home",
+       today .. " Atomic wedgie"},
+      {})
+
+todo:run("del", "2")
+check(todo, 
+      {"(A) " .. today .." Bake cookies +baking @home"},
+      {})
+
+todo:run("add", "(B) Eat cookies +baking @home")
+check(todo, 
+      {"(A) " .. today .. " Bake cookies +baking @home",
+       "(B) " .. today .. " Eat cookies +baking @home"},
+      {})
+
+todo:run("do", "1")
+check(todo, 
+      {"(B) " .. today .. " Eat cookies +baking @home",
+       "x " .. today .. " " .. today .. " Bake cookies +baking @home"},
+      {})
+
+todo:run("pri", "1", "C")
+check(todo, 
+      {"(C) " .. today .. " Eat cookies +baking @home",
+       "x " .. today .. " " .. today .. " Bake cookies +baking @home"},
+      {})
+
+todo:run("do", "1")
+check(todo, 
+      {"x " .. today .. " " .. today .. " Bake cookies +baking @home",
+       "x " .. today .. " " .. today .. " Eat cookies +baking @home"},
+      {})
+
+todo:run("add", "(A) Run five miles penance")
+todo:run("arch")
+check(todo, 
+      {"(A) " .. today .. " Run five miles penance"},
+      {"x " .. today .. " " .. today .. " Bake cookies +baking @home",
+       "x " .. today .. " " .. today .. " Eat cookies +baking @home"})
