@@ -79,3 +79,11 @@ for i,task in ipairs(task_list) do
    assert(Task.string(task) == ordered_task_string_list[i])
 end
 
+--[[
+# Task I/O tests
+--]]
+
+tasks = Task.read_tasks("test/task_in.txt")
+Task.write_tasks("test/task_out.txt", tasks)
+Task.sort(tasks)
+Task.print_tasks(tasks)

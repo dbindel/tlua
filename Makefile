@@ -17,6 +17,7 @@ doc/%.md: %.lua
 
 test:
 	for fname in test/*.lua ; do lua $$fname ; done
+	diff test/task_out.txt test/task_out_ref.txt
 
 clean:
 	rm -f doc/*.html doc/*.pdf doc/*.md

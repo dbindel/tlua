@@ -96,6 +96,9 @@ We define the following order on tasks:
 3.  Sort unfinished tasks by priority (unprioritized last)
 4.  Sort within priority by date added (oldest first)
 5.  Then sort according to original ordering (task.number)
+
+The last criterion is used to stabilize the sort, since stability
+is not guaranteed by the lua `table.sort` function.
 --]]
 
 function Task.compare(t1,t2)
@@ -122,17 +125,84 @@ function Task.compare(t1,t2)
    end
 end
 
+--[[
+The `Task.sort` command sorts a task list.  Note that this does not
+affect the original list, other than assigning the `number` field to
+each of the tasks (if not previously assigned).
+--]]
+
 function Task.sort(tasks)
-   for i = 1,#tasks do tasks[i].number = i end
+   for i = 1,#tasks do 
+      tasks[i].number = tasks[i].number or i
+   end
    return table.sort(tasks, Task.compare)
 end
 
+--[[
+# Task I/O
+
+On input, a task file is allowed to have shell-style comments and
+blank lines (which are ignored).  On output, it is just the formatted
+tasks.  The `print_tasks` command prints to `stdout`, while `write_tasks`
+goes to a file.
+--]]
+
+function Task.read_tasks(task_file)
+   local tasks = {}
+   for task_line in io.lines(task_file) do
+      if not string.match(task_line, "^#") then
+         local task = Task.parse(task_line)
+         if task.description ~= "" then 
+            table.insert(tasks, task) 
+         end
+      end
+   end
+   return tasks
+end
+
+function Task.write_tasks(task_file, tasks)
+   local open_file = (type(task_file) == "string")
+   if open_file then task_file = io.open(task_file, "w+") end
+   for i,task in ipairs(tasks) do
+      task_file:write(Task.string(task) .. "\n")
+   end
+   if open_file then task_file:close() end
+end
+
+function Task.print_tasks(tasks)
+   for i,task in ipairs(tasks) do
+      print(i, Task.string(task))
+   end
+end
+
+--[[
+# Task operations
+
+The basic operations on a task are to `add` it, `prioritize` it, or
+`complete` it.  When we `add` a task, we insert a start date if one is not
+already provided.  When we `complete` a task, we insert a completion date.
+--]]
+
+local function date_string()
+   return os.date("%F", os.time())
+end
+
+function Task.add(task)
+   task.started = task.started or date_string()
+end
+
+function Task.complete(task)
+   task.priority = nil
+   task.done = task.done or date_string()
+end
+
+--ldoc off
 --[[
 Want to:
    - Parse (both todo and done)
    - Execute user update actions (add, complete, prioritize)
    - Add repeating tasks
-   - Sort
+   - Sort and filter
    - Execute list actions
 
 Eventually:
