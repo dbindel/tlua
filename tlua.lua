@@ -81,12 +81,6 @@ function task_string(task)
 end
 
 --[[
-## Testing task parsing
---]]
-
-print("Today is:", os.date("%F", os.time()))
-
---[[
 Want to:
    - Parse (both todo and done)
    - Execute user update actions (add, complete, prioritize)
@@ -97,3 +91,6 @@ Want to:
 Eventually:
    - Start/stop clock on task
 --]]
+
+-- print("Today is:", os.date("%F", os.time()))
+
