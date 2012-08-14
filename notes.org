@@ -1,3 +1,5 @@
 Still to do:
+ - Free-form and project clocks
+ - Pretty output
  - Repeating tasks
 

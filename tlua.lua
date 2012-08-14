@@ -152,8 +152,7 @@ end
 
 On input, a task file is allowed to have shell-style comments and
 blank lines (which are ignored).  On output, it is just the formatted
-tasks.  The `print_tasks` command prints to `stdout`, while `write_tasks`
-goes to a file.
+tasks.
 --]]
 
 function Task.read_tasks(task_file)
@@ -177,15 +176,6 @@ function Task.write_tasks(task_file, tasks)
       task_file:write(Task.string(task) .. "\n")
    end
    if open_file then task_file:close() end
-end
-
-function Task.print_tasks(tasks, filter)
-   for i,task in ipairs(tasks) do
-      local s = Task.string(task, true)
-      if not filter or string.find(s, filter, 1, true) then
-         print(i, s)
-      end
-   end
 end
 
 --[[
@@ -217,6 +207,36 @@ manipulating tasks and task files.  The main `Todo` class is where we
 actually have the logic of how we want to move things around according
 to user commands.
 
+## Convenience functions
+
+We use ANSI escape codes for text coloring.
+--]]
+
+local color_codes = {
+   BLACK='\27[0;30m',
+   RED='\27[0;31m',
+   GREEN='\27[0;32m',
+   BROWN='\27[0;33m',
+   BLUE='\27[0;34m',
+   PURPLE='\27[0;35m',
+   CYAN='\27[0;36m',
+   LIGHT_GREY='\27[0;37m',
+   DARK_GREY='\27[1;30m',
+   LIGHT_RED='\27[1;31m',
+   LIGHT_GREEN='\27[1;32m',
+   YELLOW='\27[1;33m',
+   LIGHT_BLUE='\27[1;34m',
+   LIGHT_PURPLE='\27[1;35m',
+   LIGHT_CYAN='\27[1;36m',
+   WHITE='\27[1;37m',
+   DEFAULT='\27[0m'
+}
+
+local function color(name)
+   io.stdout:write(color_codes[name or 'DEFAULT'])
+end
+
+--[[
 ## Creation and convenience functions
 
 We use `new` to generate an object for testing; otherwise, we `load`
@@ -268,7 +288,14 @@ the task list.
 
 function Todo:list(filter)
    Task.sort(self.todo_tasks)
-   Task.print_tasks(self.todo_tasks, filter)
+   for i,task in ipairs(self.todo_tasks) do
+      local s = Task.string(task, true)
+      if not filter or string.find(s, filter, 1, true) then
+         if task.priority then color "BLUE" end
+         print(i, s)
+         color()
+      end
+   end
 end
 
 function Todo:archive()
