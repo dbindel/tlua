@@ -1,4 +1,3 @@
 Still to do:
- - Free-form and project clocks
  - Repeating tasks
 

@@ -158,13 +158,9 @@ tasks.
 function Task.read_tasks(task_file)
    local tasks = {}
    for task_line in io.lines(task_file) do
-      if not string.match(task_line, "^#") then
-         local task = Task.parse(task_line)
-         if task.description ~= "" then 
-            table.insert(tasks, task) 
-            task.number = #tasks
-         end
-      end
+      local task = Task.parse(task_line)
+      table.insert(tasks, task) 
+      task.number = #tasks
    end
    return tasks
 end
@@ -207,7 +203,7 @@ manipulating tasks and task files.  The main `Todo` class is where we
 actually have the logic of how we want to move things around according
 to user commands.
 
-## Creation and convenience functions
+## Creation and save functions
 
 We use `new` to generate an object for testing; otherwise, we `load`
 the files at the beginning and `save` them at the end.
@@ -219,19 +215,26 @@ Todo.__index = Todo
 function Todo:new()
    local result = {
       todo_tasks = {},
-      done_tasks = {}
+      done_tasks = {},
+      proj_tasks = {}
    }
    setmetatable(result, self)
    return result
 end
 
-function Todo:load(todo_file, done_file)
+function Todo:load(todo_file, done_file, proj_file)
    local result = {
       todo_file = todo_file,
       done_file = done_file,
+      proj_file = proj_file,
       todo_tasks = Task.read_tasks(todo_file),
-      done_tasks = Task.read_tasks(done_file)
+      done_tasks = Task.read_tasks(done_file),
+      proj_tasks = Task.read_tasks(proj_file)
    }
+   for i,t in ipairs(result.proj_tasks) do
+      result.proj_tasks[t.description] = 
+         result.proj_tasks[t.description] or t
+   end
    setmetatable(result, self)
    return result
 end
@@ -239,7 +242,16 @@ end
 function Todo:save()
    Task.write_tasks(self.todo_file, self.todo_tasks)
    Task.write_tasks(self.done_file, self.done_tasks)
+   Task.write_tasks(self.proj_file, self.proj_tasks)
 end
+
+--[[
+## Interpreting id strings
+
+A number in the range of valid indices for the to-do list refers to
+a `todo` task.  For some tasks (e.g. clock management), we also want
+the ability to refer to a task name inside the project file.
+--]]
 
 function Todo:get_id(id)
    id = tonumber(id)
@@ -247,6 +259,20 @@ function Todo:get_id(id)
       error("Task identifier is out of range")
    end
    return id
+end
+
+function Todo:get_task(id)
+   if not id or id == "" then
+      error("Invalid task id (empty)")
+   elseif string.match(id, "^%d+") then
+      return self.todo_tasks[self:get_id(id)]
+   elseif self.proj_tasks[id] then
+      return self.proj_tasks[id]
+   else
+      local task = Task.parse(id)
+      table.insert(self.proj_tasks, task)
+      return task
+   end
 end
 
 --[[
@@ -319,7 +345,8 @@ function Todo:list(filter)
    Task.sort(self.todo_tasks)
    for i,task in ipairs(self.todo_tasks) do
       local s = Task.string(task, true)
-      if not filter or string.find(s, filter, 1, true) then
+      if not string.match(task.description, "^%#%s*$") and
+         (not filter or string.find(s, filter, 1, true)) then
          self:print_task(task,i)
       end
    end
@@ -359,13 +386,13 @@ local function difftimes(cumsec)
 end
 
 function Todo:tic(id)
-   id = self:get_id(id)
-   self.todo_tasks[id].data.tic = os.time()
+   local task = self:get_task(id)
+   task.data.tic = os.time()
 end
 
 function Todo:toc(id)
-   id = self:get_id(id)
-   local td = self.todo_tasks[id].data
+   local task = self:get_task(id)
+   local td = task.data
    if not td.tic then
       error("No timer was set!")
    end
@@ -377,8 +404,8 @@ function Todo:toc(id)
 end
 
 function Todo:time(id)
-   id = self:get_id(id)
-   local td = self.todo_tasks[id].data
+   local task = self:get_task(id)
+   local td = task.data
    print("Total:", difftimes(td.time or 0))
 end
 
@@ -442,7 +469,8 @@ end
 TODO_PATH = os.getenv("TODO_PATH") or ""
 local function main(...)
    local todo = Todo:load(TODO_PATH .. "todo.txt", 
-                          TODO_PATH .. "done.txt")
+                          TODO_PATH .. "done.txt",
+                          TODO_PATH .. "proj.txt")
    todo:run(...)
    todo:archive()
    todo:save()
