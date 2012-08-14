@@ -368,30 +368,36 @@ end
 local function match_date_spec(spec)
    local dt = os.date("*t", os.time())
    local dayname = {'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'}
-   return 
-      (spec == "weekdays" and dt.wday > 1 and dt.wday < 7) or
-      (spec == "weekends" and dt.wday == 1 or dt.wday == 7) or
-      string.match(spec, dayname[dt.wday]) or
-      (string.match(spec, "%d%d%d%d-%d%d-%d%d") and spec >= date_string())
+   return spec and
+      ((spec == "weekdays" and dt.wday > 1 and dt.wday < 7) or
+       (spec == "weekends" and dt.wday == 1 or dt.wday == 7) or
+       string.match(spec, dayname[dt.wday]) or
+       (string.match(spec, "%d%d%d%d-%d%d-%d%d") and spec >= date_string()))
 end
 
 function Todo:autoqueue()
    for i,task in ipairs(self.proj_tasks) do
-      if task.data["repeat"] and
-         match_date_spec(task.data["repeat"]) and 
+      if match_date_spec(task.data["repeat"]) and 
          not self.todo_tasks[task.description] and
          (not self.done_tasks[task.description] or
           self.done_tasks[task.description].done ~= date_string()) then
-            print("Queue: ", task.description)
-            local tnew = {
-               priority = task.priority,
-               added = date_string(),
-               description = task.description,
-               projects = task.projects,
-               contexts = task.contexts,
-               data = {}
-            }
-            table.insert(self.todo_tasks, tnew)
+            
+          local tnew = {
+             priority = task.priority,
+             added = date_string(),
+             description = task.description,
+             projects = task.projects,
+             contexts = task.contexts,
+             data = {}
+          }
+          table.insert(self.todo_tasks, tnew)
+
+      elseif match_date_spec(task.data.queue) then
+
+         task.data = {}
+         table.insert(self.todo_tasks, task)
+         table.remove(self.proj_tasks, i)
+
       end
    end
 end
@@ -469,7 +475,10 @@ function Todo:prioritize(id, priority)
 end
 
 function Todo:finish(id)
-   Task.complete(self.todo_tasks[self:get_id(id)])
+   local task = self.todo_tasks[self:get_id(id)]
+   Task.complete(task)
+   if task.data.tic  then self:toc(id)                               end
+   if task.data.time then task.data.time = difftimes(task.data.time) end
 end
 
 --[[
@@ -502,7 +511,6 @@ end
 
 TODO_PATH = os.getenv("TODO_PATH") or ""
 local function main(...)
-   dofile(TODO_PATH .. "rules.lua")
    local todo = Todo:load(TODO_PATH .. "todo.txt", 
                           TODO_PATH .. "done.txt",
                           TODO_PATH .. "proj.txt")
