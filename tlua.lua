@@ -29,7 +29,8 @@ Task = {}
 
 The `parse_task` function converts a task line, either finished or
 unfinished, into a Lua table.  The fields are `done`, `priority`,
-`date`, `project`, and `context`.
+`description`, `added`, `projects`, and `contexts`.  There can be
+auxiliary information in `data`.
 --]]
 
 function Task.parse(line)
@@ -52,7 +53,7 @@ function Task.parse(line)
    lget("^(%d%d%d%d%-%d%d%-%d%d)%s+",     get_date)
    lget("%s+%+(%w+)", get_project)
    lget("%s+%@(%w+)", get_context)
-   lget("%s+(%w+):([%w%.]+)", get_value)
+   lget("%s+(%w+):([^%s]+)", get_value)
 
    line = string.gsub(line, "^%s*", "")
    line = string.gsub(line, "%s*$", "")
@@ -68,7 +69,7 @@ The `Task.string` function takes a task record and generates a
 corresponding string that can be parsed by `Task.parse`.
 --]]
 
-function Task.string(task,print_fmt)
+function Task.string(task)
    local result
    if task.done then
       result = "x " .. task.done .. " "
@@ -81,10 +82,8 @@ function Task.string(task,print_fmt)
       result = result .. task.added .. " " 
    end
    result = result .. task.description
-   if not print_fmt then
-      for k,v in pairs(task.data) do
-         result = result .. " " .. k .. ":" .. v
-      end
+   for k,v in pairs(task.data) do
+      result = result .. " " .. k .. ":" .. v
    end
    for i,project in ipairs(task.projects) do
       result = result .. " +" .. project
@@ -231,10 +230,12 @@ function Todo:load(todo_file, done_file, proj_file)
       done_tasks = Task.read_tasks(done_file),
       proj_tasks = Task.read_tasks(proj_file)
    }
-   for i,t in ipairs(result.proj_tasks) do
-      result.proj_tasks[t.description] = 
-         result.proj_tasks[t.description] or t
+   local function bydesc(tbl)
+      for i,t in ipairs(tbl) do tbl[t.description] = t end
    end
+   bydesc(result.todo_tasks)
+   bydesc(result.done_tasks)
+   bydesc(result.proj_tasks)
    setmetatable(result, self)
    return result
 end
@@ -319,7 +320,9 @@ function Todo:print_task(task,i)
    else                      p("   ")
    end
 
-   color(task.data.color or "DEFAULT")
+   color(task.data.color or 
+         (task.data.tic and "GREEN") or
+         "DEFAULT")
    p(string.format("%-30s", task.description))
    color()
 
@@ -358,6 +361,37 @@ function Todo:archive()
       if task.done then 
          table.insert(self.done_tasks, task) 
          self.todo_tasks[i] = nil
+      end
+   end
+end
+
+local function match_date_spec(spec)
+   local dt = os.date("*t", os.time())
+   local dayname = {'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'}
+   return 
+      (spec == "weekdays" and dt.wday > 1 and dt.wday < 7) or
+      (spec == "weekends" and dt.wday == 1 or dt.wday == 7) or
+      string.match(spec, dayname[dt.wday]) or
+      (string.match(spec, "%d%d%d%d-%d%d-%d%d") and spec >= date_string())
+end
+
+function Todo:autoqueue()
+   for i,task in ipairs(self.proj_tasks) do
+      if task.data["repeat"] and
+         match_date_spec(task.data["repeat"]) and 
+         not self.todo_tasks[task.description] and
+         (not self.done_tasks[task.description] or
+          self.done_tasks[task.description].done ~= date_string()) then
+            print("Queue: ", task.description)
+            local tnew = {
+               priority = task.priority,
+               added = date_string(),
+               description = task.description,
+               projects = task.projects,
+               contexts = task.contexts,
+               data = {}
+            }
+            table.insert(self.todo_tasks, tnew)
       end
    end
 end
@@ -468,9 +502,11 @@ end
 
 TODO_PATH = os.getenv("TODO_PATH") or ""
 local function main(...)
+   dofile(TODO_PATH .. "rules.lua")
    local todo = Todo:load(TODO_PATH .. "todo.txt", 
                           TODO_PATH .. "done.txt",
                           TODO_PATH .. "proj.txt")
+   todo:autoqueue()
    todo:run(...)
    todo:archive()
    todo:save()
