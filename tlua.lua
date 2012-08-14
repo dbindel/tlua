@@ -33,7 +33,7 @@ unfinished, into a Lua table.  The fields are `done`, `priority`,
 --]]
 
 function Task.parse(line)
-   local result = { projects = {}, contexts = {} }
+   local result = { data = {}, projects = {}, contexts = {} }
    
    local function lget(pattern, handler)
       line = string.gsub(line, pattern, 
@@ -45,12 +45,14 @@ function Task.parse(line)
    local function get_date(s)     result.added = s    end
    local function get_project(s) table.insert(result.projects or {}, s) end
    local function get_context(s) table.insert(result.contexts or {}, s) end
+   local function get_value(k,v) result.data[k] = v end
 
    lget("^x%s+(%d%d%d%d%-%d%d%-%d%d)%s+", get_done)
    lget("^%(([A-Z])%)%s+",                get_priority)
    lget("^(%d%d%d%d%-%d%d%-%d%d)%s+",     get_date)
    lget("%s+%+(%w+)", get_project)
    lget("%s+%@(%w+)", get_context)
+   lget("%s+(%w+):([%w%.]+)", get_value)
 
    line = string.gsub(line, "^%s*", "")
    line = string.gsub(line, "%s*$", "")
@@ -66,7 +68,7 @@ The `Task.string` function takes a task record and generates a
 corresponding string that can be parsed by `Task.parse`.
 --]]
 
-function Task.string(task)
+function Task.string(task,print_fmt)
    local result
    if task.done then
       result = "x " .. task.done .. " "
@@ -75,8 +77,15 @@ function Task.string(task)
    else
       result = ""
    end
-   if task.added then result = result .. task.added .. " " end
+   if task.added then 
+      result = result .. task.added .. " " 
+   end
    result = result .. task.description
+   if not print_fmt then
+      for k,v in pairs(task.data) do
+         result = result .. " " .. k .. ":" .. v
+      end
+   end
    for i,project in ipairs(task.projects) do
       result = result .. " +" .. project
    end
@@ -172,7 +181,7 @@ end
 
 function Task.print_tasks(tasks, filter)
    for i,task in ipairs(tasks) do
-      local s = Task.string(task)
+      local s = Task.string(task, true)
       if not filter or string.find(s, filter, 1, true) then
          print(i, s)
       end
@@ -206,9 +215,12 @@ end
 The `Task` namespace has the methods for reading, writing, and
 manipulating tasks and task files.  The main `Todo` class is where we
 actually have the logic of how we want to move things around according
-to user commands.  We use `new` to generate an object for testing;
-otherwise, we `load` the files at the beginning and `save` them at the
-end.
+to user commands.
+
+## Creation and convenience functions
+
+We use `new` to generate an object for testing; otherwise, we `load`
+the files at the beginning and `save` them at the end.
 --]]
 
 Todo = {}
@@ -239,6 +251,21 @@ function Todo:save()
    Task.write_tasks(self.done_file, self.done_tasks)
 end
 
+function Todo:get_id(id)
+   id = tonumber(id)
+   if id < 1 or id > #(self.todo_tasks) then
+      error("Task identifier is out of range")
+   end
+   return id
+end
+
+--[[
+## Global processing
+
+The `list`, `archive`, and `stamp` commands act on all elements of
+the task list.
+--]]
+
 function Todo:list(filter)
    Task.sort(self.todo_tasks)
    Task.print_tasks(self.todo_tasks, filter)
@@ -254,6 +281,57 @@ function Todo:archive()
    end
 end
 
+function Todo:stamp()
+   for i,task in ipairs(self.todo_tasks) do
+      task.added = task.added or date_string()
+   end
+end
+
+--[[
+## Timers
+
+The `tic` and `toc` commands can be used to keep track of how much
+time is being spent on a given task.  The `time` command can be used
+to report the elapsed time on a task without starting the stopwatch.
+--]]
+
+local function difftimes(cumsec)
+   local h = math.floor(cumsec / 3600)
+   cumsec = cumsec-h*3600
+   local m = math.floor(cumsec / 60)
+   cumsec = cumsec-m*60
+   local s = cumsec
+   return string.format("%d:%02d:%02d", h, m, s)
+end
+
+function Todo:tic(id)
+   id = self:get_id(id)
+   self.todo_tasks[id].data.tic = os.time()
+end
+
+function Todo:toc(id)
+   id = self:get_id(id)
+   local td = self.todo_tasks[id].data
+   if not td.tic then
+      error("No timer was set!")
+   end
+   local elapsed = os.difftime(os.time(), td.tic)
+   td.tic = nil
+   td.time = (td.time or 0) + elapsed
+   print("Elapsed:", difftimes(elapsed))
+   print("Total  :", difftimes(td.time))
+end
+
+function Todo:time(id)
+   id = self:get_id(id)
+   local td = self.todo_tasks[id].data
+   print("Total:", difftimes(td.time or 0))
+end
+
+--[[
+## Adding, removing, and updating tasks
+--]]
+
 function Todo:add(task_string)
    if not task_string then
       error("Add requires a task string")
@@ -264,18 +342,11 @@ function Todo:add(task_string)
 end
 
 function Todo:delete(id)
-   id = tonumber(id)
-   if id < 1 or id > #(self.todo_tasks) then
-      error("Task identifier is out of range")
-   end
-   table.remove(self.todo_tasks, id)
+   table.remove(self.todo_tasks, self:get_id(id))
 end
 
 function Todo:prioritize(id, priority)
-   id = tonumber(id)
-   if id < 1 or id > #(self.todo_tasks) then
-      error("Task identifier is out of range")
-   end
+   id = self:get_id(id)
    if not string.match(priority, "[A-Z]") then
       error("Priority must be a single character, A-Z")
    end
@@ -283,20 +354,24 @@ function Todo:prioritize(id, priority)
 end
 
 function Todo:finish(id)
-   id = tonumber(id)
-   if id < 1 or id > #(self.todo_tasks) then
-      error("Task identifier is out of range")
-   end
-   Task.complete(self.todo_tasks[id])
+   Task.complete(self.todo_tasks[self:get_id(id)])
 end
 
+--[[
+## The main event
+--]]
+
 local todo_tasks = {
-   ls = Todo.list,
-   arch = Todo.archive,
+   ls    = Todo.list,
+   arch  = Todo.archive,
+   stamp = Todo.stamp,
    add = Todo.add,
    del = Todo.delete,
    pri = Todo.prioritize,
-   ["do"] = Todo.finish
+   ["do"] = Todo.finish,
+   tic = Todo.tic,
+   toc = Todo.toc,
+   time = Todo.time
 }
 
 function Todo:run(id, ...)

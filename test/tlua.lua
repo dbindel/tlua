@@ -12,6 +12,9 @@ function compare_task(t1, t2)
    assert(t1.description == t2.description)
    assert(#(t1.projects) == #(t2.projects))
    assert(#(t1.contexts) == #(t2.contexts))
+   for k,v in pairs(t1.data) do
+      assert(t2.data[k] == v)
+   end
    for i,project in ipairs(t1.projects) do
       assert(t2.projects[i] == project)
    end
@@ -32,12 +35,14 @@ t1ref = {
 }
 compare_task(t1, t1ref)
 
-t2 = Task.parse("(A) 2012-08-03 Eat cookies @home +baking")
-assert(Task.string(t2) == "(A) 2012-08-03 Eat cookies +baking @home")
+t2 = Task.parse("(A) 2012-08-03 Eat cookies key1:v1 key2:v2 @home +baking")
+assert(Task.string(t2) == 
+       "(A) 2012-08-03 Eat cookies key1:v1 key2:v2 +baking @home")
 t2ref = {
   priority = "A",
   added = "2012-08-03",
   description = "Eat cookies",
+  data = {key1 = "v1", key2 = "v2"},
   contexts = {"home"},
   projects = {"baking"}
 }
