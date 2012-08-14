@@ -358,7 +358,7 @@ function Todo:finish(id)
 end
 
 --[[
-## The main event
+# The main event
 --]]
 
 local todo_tasks = {
