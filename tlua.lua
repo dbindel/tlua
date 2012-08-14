@@ -207,36 +207,6 @@ manipulating tasks and task files.  The main `Todo` class is where we
 actually have the logic of how we want to move things around according
 to user commands.
 
-## Convenience functions
-
-We use ANSI escape codes for text coloring.
---]]
-
-local color_codes = {
-   BLACK='\27[0;30m',
-   RED='\27[0;31m',
-   GREEN='\27[0;32m',
-   BROWN='\27[0;33m',
-   BLUE='\27[0;34m',
-   PURPLE='\27[0;35m',
-   CYAN='\27[0;36m',
-   LIGHT_GREY='\27[0;37m',
-   DARK_GREY='\27[1;30m',
-   LIGHT_RED='\27[1;31m',
-   LIGHT_GREEN='\27[1;32m',
-   YELLOW='\27[1;33m',
-   LIGHT_BLUE='\27[1;34m',
-   LIGHT_PURPLE='\27[1;35m',
-   LIGHT_CYAN='\27[1;36m',
-   WHITE='\27[1;37m',
-   DEFAULT='\27[0m'
-}
-
-local function color(name)
-   io.stdout:write(color_codes[name or 'DEFAULT'])
-end
-
---[[
 ## Creation and convenience functions
 
 We use `new` to generate an object for testing; otherwise, we `load`
@@ -280,6 +250,65 @@ function Todo:get_id(id)
 end
 
 --[[
+## Pretty-printing tasks
+
+Text coloring and formatting is done by inserting ANSI escape codes.
+I grabbed these from the original `todo.sh` script.  Users can select
+colors.
+--]]
+
+local color_codes = {
+   BLACK='\27[0;30m',
+   RED='\27[0;31m',
+   GREEN='\27[0;32m',
+   BROWN='\27[0;33m',
+   BLUE='\27[0;34m',
+   PURPLE='\27[0;35m',
+   CYAN='\27[0;36m',
+   LIGHT_GREY='\27[0;37m',
+   DARK_GREY='\27[1;30m',
+   LIGHT_RED='\27[1;31m',
+   LIGHT_GREEN='\27[1;32m',
+   YELLOW='\27[1;33m',
+   LIGHT_BLUE='\27[1;34m',
+   LIGHT_PURPLE='\27[1;35m',
+   LIGHT_CYAN='\27[1;36m',
+   WHITE='\27[1;37m',
+   DEFAULT='\27[0m'
+}
+
+local function color(name)
+   name = string.upper(name or 'DEFAULT')
+   io.stdout:write(color_codes[name] or color_codes.DEFAULT)
+end
+
+function Todo:print_task(task,i)
+   local result
+   local function p(s) io.stdout:write(s .. " ") end
+
+   if i then p(string.format("% 3d. ", i)) end
+
+   if     task.done     then p("x " .. task.done)
+   elseif task.priority then p("(" .. task.priority .. ")")
+   else                      p("   ")
+   end
+
+   color(task.data.color or "DEFAULT")
+   p(string.format("%-30s", task.description))
+   color()
+
+   for i,project in ipairs(task.projects) do p("+" .. project) end
+   for i,context in ipairs(task.contexts) do p("@" .. context) end
+
+   if task.added then 
+      color "LIGHT_GREY"
+      p(task.added)
+      color()
+   end
+   io.stdout:write("\n")
+end
+
+--[[
 ## Global processing
 
 The `list`, `archive`, and `stamp` commands act on all elements of
@@ -291,9 +320,7 @@ function Todo:list(filter)
    for i,task in ipairs(self.todo_tasks) do
       local s = Task.string(task, true)
       if not filter or string.find(s, filter, 1, true) then
-         if task.priority then color "BLUE" end
-         print(i, s)
-         color()
+         self:print_task(task,i)
       end
    end
 end
