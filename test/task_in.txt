@@ -1,0 +1,8 @@
+x 2012-08-01 done 1  
+x 2012-07-01 done 3  
+x 2012-08-01 done 2
+(A) First task
+(A) Second task
+(B) Fifth task
+(B) 2012-08-01 Third task
+(B) 2012-08-02 Fourth task
