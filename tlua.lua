@@ -426,13 +426,23 @@ time is being spent on a given task.  The `time` command can be used
 to report the elapsed time on a task without starting the stopwatch.
 --]]
 
-local function difftimes(cumsec)
+local function timetosec(timestr)
+   if not timestr then return 0 end
+   local h,m,s = string.match(timestr, "(%d+)%.(%d%d)%.(%d%d)")
+   if h then 
+      return s+60*(m+60*h)
+   else
+      return tonumber(timestr)
+   end
+end
+
+local function sectotime(cumsec)
    local h = math.floor(cumsec / 3600)
    cumsec = cumsec-h*3600
    local m = math.floor(cumsec / 60)
    cumsec = cumsec-m*60
    local s = cumsec
-   return string.format("%d:%02d:%02d", h, m, s)
+   return string.format("%d.%02d.%02d", h, m, s)
 end
 
 function Todo:tic(id)
@@ -448,15 +458,46 @@ function Todo:toc(id)
    end
    local elapsed = os.difftime(os.time(), td.tic)
    td.tic = nil
-   td.time = (td.time or 0) + elapsed
-   print("Elapsed:", difftimes(elapsed))
-   print("Total  :", difftimes(td.time))
+   td.time = sectotime(timetosec(td.time) + elapsed)
+   print("Elapsed:", sectotime(elapsed))
+   print("Total  :", td.time)
 end
 
 function Todo:time(id)
    local task = self:get_task(id)
    local td = task.data
-   print("Total:", difftimes(td.time or 0))
+   local elapsed = td.tic and os.difftime(os.time(), td.tic) or 0
+   print("Total:", sectotime(timetosec(td.time) + elapsed))
+end
+
+function Todo:report(filter)
+   local ttime = 0
+   local ptimes = {}
+   local ptasks = {}
+   for i,task in ipairs(self.done_tasks) do
+      local s = Task.string(task, true)
+      if not string.match(task.description, "^%#%s*$") and
+         (not filter or string.find(s, filter, 1, true)) then
+         for j,proj in ipairs(task.projects) do
+            if not ptimes[proj] then
+               table.insert(ptimes, proj)
+               ptimes[proj] = 0
+               ptasks[proj] = 0
+            end
+            ptimes[proj] = ptimes[proj] + timetosec(task.data.time)
+            ptasks[proj] = ptasks[proj] + 1
+         end
+         ttime = ttime + timetosec(task.data.time)
+      end
+   end
+   table.sort(ptimes)
+
+   print(string.format("Total recorded time : %10s", sectotime(ttime)))
+   print("By project:")
+   for i,pname in ipairs(ptimes) do
+      print(string.format("%10s : %10s : %d tasks", 
+                          pname, sectotime(ptimes[pname]), ptasks[pname]))
+   end
 end
 
 --[[
@@ -487,8 +528,9 @@ end
 function Todo:finish(id)
    local task = self.todo_tasks[self:get_id(id)]
    Task.complete(task)
-   if task.data.tic  then self:toc(id)                               end
-   if task.data.time then task.data.time = difftimes(task.data.time) end
+   if task.data.tic then 
+      self:toc(id) 
+   end
 end
 
 --[[
@@ -497,17 +539,18 @@ end
 
 local help_string = [[
 Commands:
-   ls [filter] -- List all tasks (optionally matching filter)
-   arch        -- Archive any completed tasks to done.txt
-   stamp       -- Mark any undated entries as added today
-   add task    -- Add a new task record
-   del id      -- Delete indicated task (by number)
-   pri id      -- Prioritize indicated task
-   do id       -- Finish indicated task
-   tic id      -- Start stopwatch on indicated task or project tag
-   toc id      -- Stop stopwatch on indicated task or project tag
-   time id     -- Report time spent n indicated task or project tag
-   help        -- This function
+   ls [filter]     -- List all tasks (optionally matching filter)
+   arch            -- Archive any completed tasks to done.txt
+   stamp           -- Mark any undated entries as added today
+   add task        -- Add a new task record
+   del id          -- Delete indicated task (by number)
+   pri id level    -- Prioritize indicated task
+   do id           -- Finish indicated task
+   tic id          -- Start stopwatch on indicated task or project tag
+   toc id          -- Stop stopwatch on indicated task or project tag
+   time id         -- Report time spent n indicated task or project tag
+   report [filter] -- Print total time records by filter
+   help            -- This function
 ]]
 
 function Todo:help()
@@ -529,6 +572,7 @@ local todo_tasks = {
    tic = Todo.tic,
    toc = Todo.toc,
    time = Todo.time,
+   report = Todo.report,
    help = Todo.help
 }
 
@@ -545,9 +589,9 @@ end
 
 TODO_PATH = os.getenv("TODO_PATH") or ""
 local function main(...)
-   local todo = Todo:load(TODO_PATH .. "todo.txt", 
-                          TODO_PATH .. "done.txt",
-                          TODO_PATH .. "proj.txt")
+   local todo = Todo:load(TODO_PATH .. "/todo.txt", 
+                          TODO_PATH .. "/done.txt",
+                          TODO_PATH .. "/proj.txt")
    todo:autoqueue()
    todo:run(...)
    todo:archive()
