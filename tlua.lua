@@ -58,9 +58,11 @@ function Task.parse(line)
    local function get_context(s) table.insert(result.contexts or {}, s) end
    local function get_value(k,v) result.data[k] = v end
 
+   line = line .. " " -- Needed if description is empty
    lget("^x%s+(%d%d%d%d%-%d%d%-%d%d)%s+", get_done)
    lget("^%(([A-Z])%)%s+",                get_priority)
    lget("^(%d%d%d%d%-%d%d%-%d%d)%s+",     get_date)
+   line = " " .. line -- Needed if description is empty
    lget("%s+%+(%w+)", get_project)
    lget("%s+%@(%w+)", get_context)
    lget("%s+(%w+):([^%s]+)", get_value)
@@ -105,7 +107,7 @@ function Task.string(task)
 end
 
 --[[
-## Task ordering
+## Task ordering and filtering
 
 We define the following order on tasks:
 
@@ -154,6 +156,43 @@ function Task.sort(tasks)
       tasks[i].number = tasks[i].number or i
    end
    return table.sort(tasks, Task.compare)
+end
+
+--[[
+The `Task.make_filter` function generates a predicate that checks
+whether a given task matches a filter.  The basic idea is that
+every field in the filter should match with a field in the actual
+task.  For the moment, key/value pairs are ignored in filtering.
+--]]
+
+function Task.make_filter(taskspec)
+   if not taskspec then 
+      return function(task) return true end 
+   end
+   local tfilter = Task.parse(taskspec)
+   
+   local function match_list(task, lname)
+      local task_names = {}
+      local matches = true
+      for i,n in ipairs(task[lname]) do task_names[n] = true end
+      for i,n in ipairs(tfilter[lname]) do
+         matches = matches and task_names[n]
+      end
+      return matches
+   end
+   
+   local function task_match(task)
+      return
+         ((not tfilter.done)     or tfilter.done     == task.done    ) and
+         ((not tfilter.priority) or tfilter.priority == task.priority) and
+         ((not tfilter.added)    or tfilter.added    == task.added   ) and
+         (tfilter.description == "" or
+          string.find(task.description, tfilter.description, 1, true)) and
+         match_list(task, 'projects') and
+         match_list(task, 'contexts')
+   end
+
+   return task_match
 end
 
 --[[
@@ -352,13 +391,12 @@ The `list`, `archive`, and `stamp` commands act on all elements of
 the task list.
 --]]
 
-function Todo:list(filter)
+function Todo:list(taskspec)
    Task.sort(self.todo_tasks)
+   local filter = Task.make_filter(taskspec)
    io.stdout:write("\n")
    for i,task in ipairs(self.todo_tasks) do
-      local s = Task.string(task, true)
-      if not string.match(task.description, "^%#%s*$") and
-         (not filter or string.find(s, filter, 1, true)) then
+      if filter(task) then
          self:print_task(task,i)
       end
    end
@@ -470,14 +508,13 @@ function Todo:time(id)
    print("Total:", sectotime(timetosec(td.time) + elapsed))
 end
 
-function Todo:report(filter)
+function Todo:report(taskspec)
+   local filter = Task.make_filter(taskspec)
    local ttime = 0
    local ptimes = {}
    local ptasks = {}
    for i,task in ipairs(self.done_tasks) do
-      local s = Task.string(task, true)
-      if not string.match(task.description, "^%#%s*$") and
-         (not filter or string.find(s, filter, 1, true)) then
+      if filter(task) then
          for j,proj in ipairs(task.projects) do
             if not ptimes[proj] then
                table.insert(ptimes, proj)
