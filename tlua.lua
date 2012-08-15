@@ -323,7 +323,7 @@ function Todo:print_task(task,i)
    local result
    local function p(s) io.stdout:write(s .. " ") end
 
-   if i then p(string.format("% 2d. ", i)) end
+   if i then p(string.format("% 2d.", i)) end
 
    if     task.done     then p("x " .. task.done)
    elseif task.priority then p("(" .. task.priority .. ")")
