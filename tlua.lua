@@ -492,6 +492,29 @@ function Todo:finish(id)
 end
 
 --[[
+## The help
+--]]
+
+local help_string = [[
+Commands:
+   ls [filter] -- List all tasks (optionally matching filter)
+   arch        -- Archive any completed tasks to done.txt
+   stamp       -- Mark any undated entries as added today
+   add task    -- Add a new task record
+   del id      -- Delete indicated task (by number)
+   pri id      -- Prioritize indicated task
+   do id       -- Finish indicated task
+   tic id      -- Start stopwatch on indicated task or project tag
+   toc id      -- Stop stopwatch on indicated task or project tag
+   time id     -- Report time spent n indicated task or project tag
+   help        -- This function
+]]
+
+function Todo:help()
+   print(help_string)
+end
+
+--[[
 # The main event
 --]]
 
@@ -505,7 +528,8 @@ local todo_tasks = {
    ["do"] = Todo.finish,
    tic = Todo.tic,
    toc = Todo.toc,
-   time = Todo.time
+   time = Todo.time,
+   help = Todo.help
 }
 
 function Todo:run(id, ...)
