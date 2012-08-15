@@ -330,9 +330,7 @@ function Todo:print_task(task,i)
    else                      p("   ")
    end
 
-   color(task.data.color or 
-         (task.data.tic and "GREEN") or
-         "DEFAULT")
+   color(task.data.color or (task.data.tic and "GREEN") or "DEFAULT")
    p(string.format("%-30s", task.description))
    color()
 
