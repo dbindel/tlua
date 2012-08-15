@@ -19,6 +19,16 @@ A finished task line has the form
 That is, the line starts with `x` and the completion date, and
 otherwise looks pretty much the same as an active task line.
 
+In addition to the priority, added date, done date, contexts, and projects,
+there can be additional data provided in key:value pairs.  The particular
+key-value pair meanings at present are:
+
+ - `tic` specifies when a task stopwatch was started
+ - `time` specifies the total time spent on a task so far
+ - `repeat` specifies when a repeating task should be added to `todo`
+ - `queue` specifies when a task should be moved from `proj` to `todo`
+ - `color` specifies a color that should be used
+
 Code for storing and processing tasks belongs to the `Task` namespace.
 --]]
 
@@ -346,6 +356,7 @@ the task list.
 
 function Todo:list(filter)
    Task.sort(self.todo_tasks)
+   io.stdout:write("\n")
    for i,task in ipairs(self.todo_tasks) do
       local s = Task.string(task, true)
       if not string.match(task.description, "^%#%s*$") and
@@ -353,6 +364,7 @@ function Todo:list(filter)
          self:print_task(task,i)
       end
    end
+   io.stdout:write("\n")
 end
 
 function Todo:archive()
