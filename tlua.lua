@@ -168,6 +168,8 @@ task.  For the moment, key/value pairs are ignored in filtering.
 function Task.make_filter(taskspec)
    if not taskspec then 
       return function(task) return true end 
+   elseif type(taskspec) == "function" then
+      return taskspec
    end
    local tfilter = Task.parse(taskspec)
    
@@ -512,6 +514,15 @@ function Todo:time(id)
    print("Total:", sectotime(timetosec(td.time) + elapsed))
 end
 
+--[[
+## Reports
+
+The basic `report` function reports on the total time being spent
+on tasks matching a given filter.  The `done` function is like `list`,
+but for projects that are already done.  The `today` function lists
+the tasks done today, together with a project summary.
+--]]
+
 function Todo:report(taskspec)
    local filter = Task.make_filter(taskspec)
    local ttime = 0
@@ -539,6 +550,23 @@ function Todo:report(taskspec)
       print(string.format("%10s : %10s : %d tasks", 
                           pname, sectotime(ptimes[pname]), ptasks[pname]))
    end
+end
+
+function Todo:done(taskspec)
+   local filter = Task.make_filter(taskspec)
+   io.stdout:write("\n")
+   for i,task in ipairs(self.done_tasks) do
+      if filter(task) then
+         self:print_task(task,i)
+      end
+   end
+   io.stdout:write("\n")
+end
+
+function Todo:today(date)
+   local taskspec = "x " .. (date or date_string())
+   self:done(taskspec)
+   self:report(taskspec)
 end
 
 --[[
@@ -591,6 +619,8 @@ Commands:
    toc id          -- Stop stopwatch on indicated task or project tag
    time id         -- Report time spent n indicated task or project tag
    report [filter] -- Print total time records by filter
+   done [filter]   -- Report completed tasks by filter
+   today [date]    -- Report activities for a day (default: current day)
    help            -- This function
 ]]
 
@@ -614,6 +644,8 @@ local todo_tasks = {
    toc = Todo.toc,
    time = Todo.time,
    report = Todo.report,
+   done = Todo.done,
+   today = Todo.today,
    help = Todo.help
 }
 

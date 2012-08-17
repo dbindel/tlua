@@ -77,7 +77,9 @@ The basic commands in the `tlua` system are:
  - `tic id`          : Start stopwatch on indicated task or project tag
  - `toc id`          : Stop stopwatch on indicated task or project tag
  - `time id`         : Report time spent on indicated task or project tag
- - `report [filter]` : Report time on tasks (optionally matching filter)
+ - `report [filter]` : Print total time records by filter
+ - `done [filter]`   : Print completed tasks by filter
+ - `today [date]`    : Report activities for a day (default is today)
  - `help`            : Get help
 
 For example, to list all tasks in the `@home` context, I would type
