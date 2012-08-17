@@ -281,7 +281,9 @@ function Todo:load(todo_file, done_file, proj_file)
       proj_file = proj_file,
       todo_tasks = Task.read_tasks(todo_file),
       done_tasks = Task.read_tasks(done_file),
-      proj_tasks = Task.read_tasks(proj_file)
+      proj_tasks = Task.read_tasks(proj_file),
+      done_updated = nil,
+      proj_updated = nil
    }
    local function bydesc(tbl)
       for i,t in ipairs(tbl) do tbl[t.description] = t end
@@ -296,44 +298,32 @@ end
 function Todo:save()
    Task.write_tasks(self.todo_file, self.todo_tasks)
    Task.write_tasks(self.done_file, self.done_tasks)
-   Task.write_tasks(self.proj_file, self.proj_tasks)
+   if self.proj_updated then
+      Task.write_tasks(self.proj_file, self.proj_tasks)
+   end
 end
 
 --[[
 ## Interpreting id strings
 
 A number in the range of valid indices for the to-do list refers to
-a `todo` task.  For some tasks (e.g. clock management), we also want
-the ability to refer to a task name inside the project file.
-
-In addition, if there is only a single active timer, we would like to
+a `todo` task.  If there is only a single active timer, we would like to
 use the task being timed as the default id for the `toc` and `do`
 commands.
 --]]
 
 function Todo:get_id(id)
    id = tonumber(id)
-   if id < 1 or id > #(self.todo_tasks) then
+   if not id then
+      error("Task identifier must be numeric")
+   elseif id < 1 or id > #(self.todo_tasks) then
       error("Task identifier is out of range")
    end
    return id
 end
 
-function Todo:get_task(id)
-   if not id or id == "" then
-      error("Invalid task id (empty)")
-   elseif string.match(id, "^%d+") then
-      return self.todo_tasks[self:get_id(id)]
-   elseif self.proj_tasks[id] then
-      return self.proj_tasks[id]
-   else
-      local task = Task.parse(id)
-      table.insert(self.proj_tasks, task)
-      return task
-   end
-end
-
-function Todo:get_tic_id()
+function Todo:get_tic_id(id)
+   if id then return self:get_id(id) end
    local ntics = 0
    local id = nil
    for i,task in ipairs(self.todo_tasks) do
@@ -429,6 +419,7 @@ function Todo:archive()
       if task.done then 
          table.insert(self.done_tasks, task) 
          self.todo_tasks[i] = nil
+         self.done_updated = true
       end
    end
 end
@@ -467,6 +458,7 @@ function Todo:autoqueue()
          task.data = {}
          table.insert(self.todo_tasks, task)
          table.remove(self.proj_tasks, i)
+         self.proj_updated = true
 
       end
    end
@@ -506,19 +498,12 @@ local function sectotime(cumsec)
 end
 
 function Todo:tic(id)
-   local task = self:get_task(id)
-   task.data.tic = os.time()
+   local task = self.todo_tasks[self:get_id(id)]
+   task.data.tic = task.data.tic or os.time()
 end
 
 function Todo:toc(id)
-   local task
-   if not id then
-      local tid = self:get_tic_id(id)
-      if not tid then error("Did not have exactly one stopwatch active") end
-      task = self.todo_tasks[tid]
-   else
-      task = self:get_task(id)
-   end
+   local task = self.todo_tasks[self:get_tic_id(id)]
    local td = task.data
    if not td.tic then
       error("No timer was set!")
@@ -531,7 +516,7 @@ function Todo:toc(id)
 end
 
 function Todo:time(id)
-   local task = self:get_task(id)
+   local task = self.todo_tasks[self:get_tic_id(id)]
    local td = task.data
    local elapsed = td.tic and os.difftime(os.time(), td.tic) or 0
    print("Total:", sectotime(timetosec(td.time) + elapsed))
@@ -648,7 +633,7 @@ Commands:
    do id           -- Finish indicated task
    tic id          -- Start stopwatch on indicated task or project tag
    toc [id]        -- Stop stopwatch on indicated task or project tag
-   time id         -- Report time spent n indicated task or project tag
+   time [id]       -- Report time spent n indicated task or project tag
    report [filter] -- Print total time records by filter
    done [filter]   -- Report completed tasks by filter
    today [date]    -- Report activities for a day (default: current day)

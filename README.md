@@ -77,7 +77,7 @@ The basic commands in the `tlua` system are:
  - `do id`           : Finish indicated task
  - `tic id`          : Start stopwatch on indicated task or project tag
  - `toc [id]`        : Stop stopwatch on indicated task or project tag
- - `time id`         : Report time spent on indicated task or project tag
+ - `time [id]`       : Report time spent on indicated task or project tag
  - `report [filter]` : Print total time records by filter
  - `done [filter]`   : Print completed tasks by filter
  - `today [date]`    : Report activities for a day (default is today)
@@ -148,6 +148,10 @@ how much time in total I spent on the `tlua` project, I might type
 or to see what I did so far today, I might type
 
     t today
+
+I could also see what I did on Monday by typing
+
+    t today 2012-08-13
 
 # Automated queueing and repeating tasks
 
