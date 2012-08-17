@@ -71,11 +71,12 @@ The basic commands in the `tlua` system are:
  - `arch`            : Archive any completed tasks to done.txt
  - `stamp`           : Mark any undated entries as added today
  - `add task`        : Add a new task record
+ - `start task`      : Add a new task record and start timing
  - `del id`          : Delete indicated task (by number)
  - `pri id level`    : Prioritize indicated task
  - `do id`           : Finish indicated task
  - `tic id`          : Start stopwatch on indicated task or project tag
- - `toc id`          : Stop stopwatch on indicated task or project tag
+ - `toc [id]`        : Stop stopwatch on indicated task or project tag
  - `time id`         : Report time spent on indicated task or project tag
  - `report [filter]` : Print total time records by filter
  - `done [filter]`   : Print completed tasks by filter
@@ -119,10 +120,14 @@ with that.  For example, when I started work on this document, I typed
 
     t tic 11
     
-where task 11 was "Document tlua".  When I list tasks, this task is
-highlighted in green, indicating that I'm currently timing my work on
-it.  If I wanted to pause, possibly to work on something different,
-I would type
+where task 11 was "Document tlua".  In order to simultaneously add a
+new task and start the timer, I might type something like
+
+    t start "Document tlua +tlua @coding"
+    
+When I list tasks, this task is highlighted in green, indicating that
+I'm currently timing my work on it.  If I wanted to pause, possibly to
+work on something different, I would type
 
     t toc 11
     
@@ -142,9 +147,7 @@ how much time in total I spent on the `tlua` project, I might type
     
 or to see what I did so far today, I might type
 
-    t report "x 2012-08-15"
-    
-A more sophisticated reporting function is something for the future.
+    t today
 
 # Automated queueing and repeating tasks
 

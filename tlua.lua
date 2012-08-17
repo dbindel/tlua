@@ -305,6 +305,10 @@ end
 A number in the range of valid indices for the to-do list refers to
 a `todo` task.  For some tasks (e.g. clock management), we also want
 the ability to refer to a task name inside the project file.
+
+In addition, if there is only a single active timer, we would like to
+use the task being timed as the default id for the `toc` and `do`
+commands.
 --]]
 
 function Todo:get_id(id)
@@ -327,6 +331,18 @@ function Todo:get_task(id)
       table.insert(self.proj_tasks, task)
       return task
    end
+end
+
+function Todo:get_tic_id()
+   local ntics = 0
+   local id = nil
+   for i,task in ipairs(self.todo_tasks) do
+      if task.data.tic then
+         ntics = ntics + 1
+         id = i
+      end
+   end
+   if ntics == 1 then return id end
 end
 
 --[[
@@ -495,7 +511,14 @@ function Todo:tic(id)
 end
 
 function Todo:toc(id)
-   local task = self:get_task(id)
+   local task
+   if not id then
+      local tid = self:get_tic_id(id)
+      if not tid then error("Did not have exactly one stopwatch active") end
+      task = self.todo_tasks[tid]
+   else
+      task = self:get_task(id)
+   end
    local td = task.data
    if not td.tic then
       error("No timer was set!")
@@ -557,7 +580,7 @@ function Todo:done(taskspec)
    io.stdout:write("\n")
    for i,task in ipairs(self.done_tasks) do
       if filter(task) then
-         self:print_task(task,i)
+         self:print_task(task)
       end
    end
    io.stdout:write("\n")
@@ -565,8 +588,9 @@ end
 
 function Todo:today(date)
    local taskspec = "x " .. (date or date_string())
-   self:done(taskspec)
-   self:report(taskspec)
+   local filter = Task.make_filter(taskspec)
+   self:done(filter)
+   self:report(filter)
 end
 
 --[[
@@ -580,6 +604,12 @@ function Todo:add(task_string)
    local task = Task.parse(task_string)
    Task.start(task)
    table.insert(self.todo_tasks, task)
+   return task
+end
+
+function Todo:start(task_string)
+   local task = self:add(task_string)
+   task.data.tic = os.time()
 end
 
 function Todo:delete(id)
@@ -612,11 +642,12 @@ Commands:
    arch            -- Archive any completed tasks to done.txt
    stamp           -- Mark any undated entries as added today
    add task        -- Add a new task record
+   start task      -- Add a new task record and start timer
    del id          -- Delete indicated task (by number)
    pri id level    -- Prioritize indicated task
    do id           -- Finish indicated task
    tic id          -- Start stopwatch on indicated task or project tag
-   toc id          -- Stop stopwatch on indicated task or project tag
+   toc [id]        -- Stop stopwatch on indicated task or project tag
    time id         -- Report time spent n indicated task or project tag
    report [filter] -- Print total time records by filter
    done [filter]   -- Report completed tasks by filter
@@ -637,6 +668,7 @@ local todo_tasks = {
    arch  = Todo.archive,
    stamp = Todo.stamp,
    add = Todo.add,
+   start = Todo.start,
    del = Todo.delete,
    pri = Todo.prioritize,
    ["do"] = Todo.finish,
