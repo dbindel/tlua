@@ -229,8 +229,10 @@ The basic operations on a task are to `start` it or `complete` it.
 These mostly potentially involve setting some date fields.
 --]]
 
+local today_string
 local function date_string()
-   return os.date("%F", os.time())
+   today_string = today_string or os.date("%F", os.time())
+   return today_string
 end
 
 function Task.start(task)
@@ -426,6 +428,8 @@ end
 function Todo:autoqueue()
    for i,task in ipairs(self.proj_tasks) do
       if match_date_spec(task.data["repeat"]) and 
+         (not task.data.starting or 
+          task.data.starting <= date_string()) and
          not self.todo_tasks[task.description] and
          (not self.done_tasks[task.description] or
           self.done_tasks[task.description].done ~= date_string()) then

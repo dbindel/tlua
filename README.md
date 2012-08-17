@@ -169,6 +169,10 @@ There are several forms for specifying the trigger date for a task:
    until the following Monday, the task would still be automatically
    queued on Monday.
 
+Tasks marked for `repeat` may also have a `starting` field that
+specifies a date (in the form `YYYY-MM-DD`) when the autoqueueing
+should begin.
+
 Note that when tasks are automatically queued, the `key:value`
 attributes (such as the `queue` or `repeat` information) are stripped
 from the copy of the task in `todo.txt`.
