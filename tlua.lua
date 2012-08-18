@@ -427,11 +427,12 @@ end
 local function match_date_spec(spec)
    local dt = os.date("*t", os.time())
    local dayname = {'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'}
-   return spec and
-      ((spec == "weekdays" and dt.wday > 1 and dt.wday < 7) or
-       (spec == "weekends" and dt.wday == 1 or dt.wday == 7) or
+   local result = spec and
+      ((spec == "weekdays" and (dt.wday > 1 and dt.wday < 7)) or
+       (spec == "weekends" and (dt.wday == 1 or dt.wday == 7)) or
        string.match(spec, dayname[dt.wday]) or
        (string.match(spec, "%d%d%d%d-%d%d-%d%d") and spec >= date_string()))
+   return result
 end
 
 function Todo:autoqueue()
