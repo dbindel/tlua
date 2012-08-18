@@ -455,6 +455,7 @@ function Todo:autoqueue()
 
       elseif match_date_spec(task.data.queue) then
 
+         task.added = task.added or date_string()
          task.data = {}
          table.insert(self.todo_tasks, task)
          table.remove(self.proj_tasks, i)
