@@ -165,13 +165,24 @@ every field in the filter should match with a field in the actual
 task.  For the moment, key/value pairs are ignored in filtering.
 --]]
 
-function Task.make_filter(taskspec)
+function Task.make_filter(taskspec, opname)
+   local tfilter
    if not taskspec then 
       return function(task) return true end 
    elseif type(taskspec) == "function" then
       return taskspec
+   elseif type(taskspec) == "table" then
+      tfilter = taskspec
+   elseif type(taskspec) == "string" then
+      for key,f in pairs(TaskFilters) do
+         if string.match(key, taskspec) then
+            return f(taskspec, opname)
+         end
+      end
+      tfilter = Task.parse(taskspec)
+   else
+      error("Invalid filter specification")
    end
-   local tfilter = Task.parse(taskspec)
    
    local function match_list(task, lname)
       local task_names = {}
@@ -245,7 +256,6 @@ function Task.complete(task)
    task.priority = nil
    task.done = task.done or date_string()
 end
-
 
 --[[
 # Todo main routines
@@ -397,21 +407,9 @@ end
 --[[
 ## Global processing
 
-The `list`, `archive`, and `stamp` commands act on all elements of
+The `archive`, and `stamp` commands act on all elements of
 the task list.
 --]]
-
-function Todo:list(taskspec)
-   Task.sort(self.todo_tasks)
-   local filter = Task.make_filter(taskspec)
-   io.stdout:write("\n")
-   for i,task in ipairs(self.todo_tasks) do
-      if filter(task) then
-         self:print_task(task,i)
-      end
-   end
-   io.stdout:write("\n")
-end
 
 function Todo:archive()
    Task.sort(self.todo_tasks)
@@ -424,7 +422,7 @@ function Todo:archive()
    end
 end
 
-local function match_date_spec(spec)
+function Todo.match_date_spec(spec)
    local dt = os.date("*t", os.time())
    local dayname = {'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'}
    local result = spec and
@@ -437,7 +435,7 @@ end
 
 function Todo:autoqueue()
    for i,task in ipairs(self.proj_tasks) do
-      if match_date_spec(task.data["repeat"]) and 
+      if Todo.match_date_spec(task.data["repeat"]) and 
          (not task.data.starting or 
           task.data.starting <= date_string()) and
          not self.todo_tasks[task.description] and
@@ -454,7 +452,7 @@ function Todo:autoqueue()
           }
           table.insert(self.todo_tasks, tnew)
 
-      elseif match_date_spec(task.data.queue) then
+      elseif Todo.match_date_spec(task.data.queue) then
 
          task.added = task.added or date_string()
          task.data = {}
@@ -527,14 +525,38 @@ end
 --[[
 ## Reports
 
-The basic `report` function reports on the total time being spent
-on tasks matching a given filter.  The `done` function is like `list`,
-but for projects that are already done.  The `today` function lists
-the tasks done today, together with a project summary.
+The `done` function is like `list`, but for projects that are already
+done.  The `summary` function reports on the total time being spent on
+tasks matching a given filter.  The `report` function gives both a
+list of tasks done and a summary.  The `today` function is a report
+for a particular day (by default, the current day).
 --]]
 
-function Todo:report(taskspec)
-   local filter = Task.make_filter(taskspec)
+function Todo:list(taskspec)
+   Task.sort(self.todo_tasks)
+   local filter = Task.make_filter(taskspec, "ls")
+   io.stdout:write("\n")
+   for i,task in ipairs(self.todo_tasks) do
+      if filter(task) then
+         self:print_task(task,i)
+      end
+   end
+   io.stdout:write("\n")
+end
+
+function Todo:done(taskspec)
+   local filter = Task.make_filter(taskspec, "done")
+   io.stdout:write("\n")
+   for i,task in ipairs(self.done_tasks) do
+      if filter(task) then
+         self:print_task(task)
+      end
+   end
+   io.stdout:write("\n")
+end
+
+function Todo:summary(taskspec)
+   local filter = Task.make_filter(taskspec, "summary")
    local ttime = 0
    local ptimes = {}
    local ptasks = {}
@@ -562,22 +584,14 @@ function Todo:report(taskspec)
    end
 end
 
-function Todo:done(taskspec)
-   local filter = Task.make_filter(taskspec)
-   io.stdout:write("\n")
-   for i,task in ipairs(self.done_tasks) do
-      if filter(task) then
-         self:print_task(task)
-      end
-   end
-   io.stdout:write("\n")
+function Todo:report(taskspec)
+   local filter = Task.make_filter(taskspec, "report")
+   self:done(filter)
+   self:summary(filter)
 end
 
 function Todo:today(date)
-   local taskspec = "x " .. (date or date_string())
-   local filter = Task.make_filter(taskspec)
-   self:done(filter)
-   self:report(filter)
+   self:report("x " .. (date or date_string()))
 end
 
 --[[
@@ -625,21 +639,27 @@ end
 
 local help_string = [[
 Commands:
-   ls [filter]     -- List all tasks (optionally matching filter)
-   arch            -- Archive any completed tasks to done.txt
-   stamp           -- Mark any undated entries as added today
-   add task        -- Add a new task record
-   start task      -- Add a new task record and start timer
-   del id          -- Delete indicated task (by number)
-   pri id level    -- Prioritize indicated task
-   do id           -- Finish indicated task
-   tic id          -- Start stopwatch on indicated task or project tag
-   toc [id]        -- Stop stopwatch on indicated task or project tag
-   time [id]       -- Report time spent n indicated task or project tag
-   report [filter] -- Print total time records by filter
-   done [filter]   -- Report completed tasks by filter
-   today [date]    -- Report activities for a day (default: current day)
-   help            -- This function
+
+   ls [filter]      -- List all tasks (optionally matching filter)
+   done [filter]    -- Report completed tasks by filter
+   summary [filter] -- Print total time records by filter
+   report [filter ] -- List tasks and summary by filter
+   today [date]     -- Report for a day (default: current day)
+
+   add task     -- Add a new task record
+   del id       -- Delete indicated task (by number)
+   pri id level -- Prioritize indicated task
+   do id        -- Finish indicated task
+
+   start task   -- Add a new task record and start timer
+   tic id       -- Start stopwatch on indicated task or project tag
+   toc [id]     -- Stop stopwatch on indicated task or project tag
+   time [id]    -- Report time spent n indicated task or project tag
+
+   arch         -- Archive any completed tasks to done.txt
+   stamp        -- Mark any undated entries as added today
+
+   help         -- This function
 ]]
 
 function Todo:help()
@@ -647,24 +667,48 @@ function Todo:help()
 end
 
 --[[
+# Task filters
+--]]
+
+TaskFilters = {}
+
+function TaskFilters.today(filter,opname)
+   if opname == "ls" then
+      return function(task) 
+         return task.added == date_string() 
+      end
+   else
+      return function(task) 
+         return task.done == date_string() 
+      end
+   end
+end
+
+--[[
 # The main event
 --]]
 
 local todo_tasks = {
+
    ls    = Todo.list,
-   arch  = Todo.archive,
-   stamp = Todo.stamp,
+   done = Todo.done,
+   summary = Todo.summary,
+   report = Todo.report,
+   today = Todo.today,
+
    add = Todo.add,
-   start = Todo.start,
    del = Todo.delete,
    pri = Todo.prioritize,
    ["do"] = Todo.finish,
+
+   start = Todo.start,
    tic = Todo.tic,
    toc = Todo.toc,
    time = Todo.time,
-   report = Todo.report,
-   done = Todo.done,
-   today = Todo.today,
+
+   arch  = Todo.archive,
+   stamp = Todo.stamp,
+   
    help = Todo.help
 }
 
