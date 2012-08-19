@@ -162,7 +162,11 @@ end
 The `Task.make_filter` function generates a predicate that checks
 whether a given task matches a filter.  The basic idea is that
 every field in the filter should match with a field in the actual
-task.  For the moment, key/value pairs are ignored in filtering.
+task.  Key/value pairs can be used to specify more sophisticated
+filtering.  For the moment, this includes:
+
+ - from:YYYY-MM-DD  -- allow all since indicated date
+ - until:YYYY-MM-DD -- allow all up to indicated date
 --]]
 
 function Task.make_filter(taskspec, opname)
@@ -174,15 +178,11 @@ function Task.make_filter(taskspec, opname)
    elseif type(taskspec) == "table" then
       tfilter = taskspec
    elseif type(taskspec) == "string" then
-      for key,f in pairs(TaskFilters) do
-         if string.match(key, taskspec) then
-            return f(taskspec, opname)
-         end
-      end
       tfilter = Task.parse(taskspec)
    else
       error("Invalid filter specification")
    end
+   local td = tfilter.data
    
    local function match_list(task, lname)
       local task_names = {}
@@ -196,6 +196,8 @@ function Task.make_filter(taskspec, opname)
    
    local function task_match(task)
       return
+         ((not td.from)     or td.from     <= task.done ) and
+         ((not td["until"]) or td["until"] >= task.done ) and
          ((not tfilter.done)     or tfilter.done     == task.done    ) and
          ((not tfilter.priority) or tfilter.priority == task.priority) and
          ((not tfilter.added)    or tfilter.added    == task.added   ) and
@@ -643,13 +645,13 @@ Commands:
    ls [filter]      -- List all tasks (optionally matching filter)
    done [filter]    -- Report completed tasks by filter
    summary [filter] -- Print total time records by filter
-   report [filter ] -- List tasks and summary by filter
+   report [filter]  -- List tasks and summary by filter
    today [date]     -- Report for a day (default: current day)
 
    add task     -- Add a new task record
+   do id        -- Finish indicated task
    del id       -- Delete indicated task (by number)
    pri id level -- Prioritize indicated task
-   do id        -- Finish indicated task
 
    start task   -- Add a new task record and start timer
    tic id       -- Start stopwatch on indicated task or project tag
@@ -658,7 +660,6 @@ Commands:
 
    arch         -- Archive any completed tasks to done.txt
    stamp        -- Mark any undated entries as added today
-
    help         -- This function
 ]]
 
@@ -667,34 +668,16 @@ function Todo:help()
 end
 
 --[[
-# Task filters
---]]
-
-TaskFilters = {}
-
-function TaskFilters.today(filter,opname)
-   if opname == "ls" then
-      return function(task) 
-         return task.added == date_string() 
-      end
-   else
-      return function(task) 
-         return task.done == date_string() 
-      end
-   end
-end
-
---[[
 # The main event
 --]]
 
 local todo_tasks = {
 
-   ls    = Todo.list,
-   done = Todo.done,
+   ls      = Todo.list,
+   done    = Todo.done,
    summary = Todo.summary,
-   report = Todo.report,
-   today = Todo.today,
+   report  = Todo.report,
+   today   = Todo.today,
 
    add = Todo.add,
    del = Todo.delete,
@@ -702,9 +685,9 @@ local todo_tasks = {
    ["do"] = Todo.finish,
 
    start = Todo.start,
-   tic = Todo.tic,
-   toc = Todo.toc,
-   time = Todo.time,
+   tic   = Todo.tic,
+   toc   = Todo.toc,
+   time  = Todo.time,
 
    arch  = Todo.archive,
    stamp = Todo.stamp,

@@ -65,31 +65,61 @@ otherwise looks pretty much the same as an active task line.
 
 # All hail the command line!
 
-The basic commands in the `tlua` system are:
+## Listing tasks
 
- - `ls [filter]`     : List all tasks (optionally matching filter)
- - `arch`            : Archive any completed tasks to done.txt
- - `stamp`           : Mark any undated entries as added today
- - `add task`        : Add a new task record
- - `start task`      : Add a new task record and start timing
- - `del id`          : Delete indicated task (by number)
- - `pri id level`    : Prioritize indicated task
- - `do id`           : Finish indicated task
- - `tic id`          : Start stopwatch on indicated task or project tag
- - `toc [id]`        : Stop stopwatch on indicated task or project tag
- - `time [id]`       : Report time spent on indicated task or project tag
- - `report [filter]` : Print total time records by filter
- - `done [filter]`   : Print completed tasks by filter
- - `today [date]`    : Report activities for a day (default is today)
- - `help`            : Get help
+The basic listing commands in the `tlua` system are:
 
-For example, to list all tasks in the `@home` context, I would type
+ - `ls [filter]`      : List all tasks (optionally matching filter)
+ - `done [filter]`    : Print completed tasks by filter
+ - `summary [filter]` : Print total time records by filter
+ - `report [filter]`  : List tasks and summary by filter
+ - `today [date]`     : Report activities for a day (default is today)
+
+The optional filter has the same format as a task specification.  All
+the date, project, and context fields provided in the filter
+specification must also appear in the listed tasks.  For example, to
+list all tasks in the `@home` context, I would type
 
     t ls @home
 
-and to add a new task, I would type
+Key/value pairs in the filter specification can be used for specifying
+other types of filters.  Right now, the filter keys are
+ 
+ - `from:YYYY-MM-DD`  : Select everything since date
+ - `until:YYYY-MM-DD` : Select everything before date
+
+## Managing tasks
+
+The basic actions are:
+
+ - `add task`        : Add a new task record
+ - `do id`           : Finish indicated task
+ - `del id`          : Delete indicated task (by number)
+ - `pri id level`    : Prioritize indicated task
+
+For example, to add a new task, I would type
 
     t add "Write tlua documentation +tlua @coding"
+
+## Timing tasks
+
+The actions that involve the timer are:
+
+ - `start task`      : Add a new task record and start timing
+ - `tic id`          : Start stopwatch on indicated task
+ - `toc [id]`        : Stop stopwatch on indicated task
+ - `time [id]`       : Report time spent on indicated task
+
+Note that the `do` command will automatically stop the stopwatch
+if it is running on a finished task.
+
+## Miscellaneous actions
+
+And there are a handful of extra actions:
+
+ - `arch`            : Archive any completed tasks to done.txt
+ - `stamp`           : Mark any undated entries as added today
+ - `help`            : Get help
 
 # Doing, really doing, done
 
