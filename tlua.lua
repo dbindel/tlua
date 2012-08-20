@@ -244,10 +244,20 @@ The basic operations on a task are to `start` it or `complete` it.
 These mostly potentially involve setting some date fields.
 --]]
 
-local today_string
-local function date_string()
-   today_string = today_string or os.date("%F", os.time())
-   return today_string
+local today_strings = {}
+local function date_string(offset)
+   offset = offset or 0
+   if today_strings[offset] then
+      return today_strings[offset]
+   elseif offset == 0 then
+      today_strings[0] = os.date("%F", os.time())
+      return today_strings[0]
+   else
+      local t = os.date("*t", os.time())
+      t.day = t.day + offset
+      today_strings[offset] = os.date("%F", os.time(t))
+      return today_strings[offset]
+   end
 end
 
 function Task.start(task)
@@ -593,7 +603,12 @@ function Todo:report(taskspec)
 end
 
 function Todo:today(date)
-   self:report("x " .. (date or date_string()))
+   local offset = tonumber(date)
+   if offset then 
+      self:report("x " .. date_string(offset))
+   else
+      self:report("x " .. (date or date_string()))
+   end
 end
 
 --[[
