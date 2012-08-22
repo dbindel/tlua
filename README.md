@@ -94,6 +94,7 @@ The basic actions are:
 
  - `add task`        : Add a new task record
  - `do id`           : Finish indicated task
+ - `did task`        : Add new record for a completed task
  - `del id`          : Delete indicated task (by number)
  - `pri id level`    : Prioritize indicated task
 

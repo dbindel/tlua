@@ -650,6 +650,11 @@ function Todo:finish(id)
    end
 end
 
+function Todo:did(task_string)
+   self:add(task_string)
+   self:finish(#self.todo_tasks)
+end
+
 --[[
 ## The help
 --]]
@@ -665,6 +670,7 @@ Commands:
 
    add task     -- Add a new task record
    do id        -- Finish indicated task
+   did task     -- Add a new record for a completed task
    del id       -- Delete indicated task (by number)
    pri id level -- Prioritize indicated task
 
@@ -695,6 +701,7 @@ local todo_tasks = {
    today   = Todo.today,
 
    add = Todo.add,
+   did = Todo.did,
    del = Todo.delete,
    pri = Todo.prioritize,
    ["do"] = Todo.finish,
