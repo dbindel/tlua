@@ -441,7 +441,7 @@ function Todo.match_date_spec(spec)
       ((spec == "weekdays" and (dt.wday > 1 and dt.wday < 7)) or
        (spec == "weekends" and (dt.wday == 1 or dt.wday == 7)) or
        string.match(spec, dayname[dt.wday]) or
-       (string.match(spec, "%d%d%d%d%-%d%d%-%d%d") and spec >= date_string()))
+       (string.match(spec, "%d%d%d%d%-%d%d%-%d%d") and spec <= date_string()))
    return result
 end
 
