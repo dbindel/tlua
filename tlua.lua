@@ -630,8 +630,15 @@ function Todo:start(task_string)
    task.data.tic = os.time()
 end
 
-function Todo:delete(id)
-   table.remove(self.todo_tasks, self:get_id(id))
+function Todo:delete(...)
+   local ids = {}
+   for i,id in ipairs{...} do
+      ids[i] = self:get_id(id)
+   end
+   table.sort(ids, function(a,b) return a > b end)
+   for i,id in ipairs(ids) do
+      table.remove(self.todo_tasks, id)
+   end
 end
 
 function Todo:prioritize(id, priority)
@@ -642,11 +649,13 @@ function Todo:prioritize(id, priority)
    self.todo_tasks[id].priority = priority
 end
 
-function Todo:finish(id)
-   local task = self.todo_tasks[self:get_id(id)]
-   Task.complete(task)
-   if task.data.tic then 
-      self:toc(id) 
+function Todo:finish(...)
+   for i,id in ipairs{...} do
+      local task = self.todo_tasks[self:get_id(id)]
+      Task.complete(task)
+      if task.data.tic then 
+         self:toc(id) 
+      end
    end
 end
 
